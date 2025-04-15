@@ -30,6 +30,11 @@ xT = xR + Q_matrix * mu;
 VaRxM = xM' * Cov * xM; % Variance (scalar)
 SigmaxM = sqrt(VaRxM);
 MuxM = mu' * xM; % Expected return (scalar)
+d = SigmaxM /(MuxM - r);
+
+mu_rf = linspace(min(mu_poly), max(mu_poly), 100);
+sigma_rf = d *(mu_rf - r);
+
 
 % Beta calculation 
 beta = Cov * xM / SigmaxM; % (10x1)
@@ -51,10 +56,11 @@ sigma_squared = zeros(1, num_gamma);
 
 
 for i = 1:num_gamma
+    gamma = gamma_values(i);
     if gamma == 0
     continue; % skip or handle specially
     end
-    gamma = gamma_values(i);
+
     % Compute x_gamma
     x_gamma(:, i) = (1/gamma) * xT + (1 - 1/gamma) * xR;
     
@@ -164,8 +170,37 @@ for i = 1:num_gamma
     sigma_num2(i) = sqrt(min_var_portfolio2(i));
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Analytical coefficients (a0, a1, b0, b1, b2)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+a0 = mu' * xR;
+a1 = mu' * (xT - xR);
+b0 = xR' * Cov * xR;
+b1 = 2 * xR' * Cov * (xT - xR);
+b2 = (xT - xR)' * Cov * (xT - xR);
+
+mu_poly = a1 ./ gamma_values + a0;
+sigma2_poly = b2 ./ (gamma_values.^2) + b1 ./ gamma_values + b0;
+sigma_poly = sqrt(sigma2_poly);
+
 figure;
 hold on;
+
+plot(sigma_poly, mu_poly, 'b--', 'LineWidth', 2, 'DisplayName', 'Analytisk (koeff)');
+plot(sigma_rf, mu_rf, 'g-', 'LineWidth', 2, 'DisplayName', 'Analytisk med rf');
+scatter(SigmaxM, MuxM, 100, 'r', 'filled', 'DisplayName', 'Tangensportfölj');
+
+xlabel('Standardavvikelse (\sigma)');
+ylabel('Förväntad avkastning (\mu)');
+title('Effektiv front: Analytisk lösning med och utan riskfri tillgång');
+legend('show');
+grid on;
+
+figure;
+hold on;
+
+%plot(sigma, mu_bar, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Analytisk (original)');
 
 % First optimization frontier
 plot(sigma_num, mu_num, 'k--', 'LineWidth', 1.5, 'DisplayName', 'Numerical Frontier 1');
@@ -176,11 +211,29 @@ plot(sigma_num2, mu_num2, 'b-.', 'LineWidth', 1.5, 'DisplayName', 'Numerical Fro
 % Mark tangency portfolio
 scatter(SigmaxM, MuxM, 100, 'r', 'filled', 'DisplayName', 'Tangency Portfolio');
 
+
 xlabel('Standard Deviation (\sigma)');
 ylabel('Expected Return (\mu)');
 title('Efficient Frontier Comparison: Optimization 1 vs 2');
+legend('show');
 grid on;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CAPM Consistency Analysis
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Read matrix
+market_cap = readmatrix('portfolioManagerV4Project 2 2025.xls', 'Sheet', 'Calculations', 'Range', 'B8:B17');
+x_cap = market_cap / sum(market_cap);  % Market cap weights
+
+% new tangent portfolio (xM_CAPM) with mu_CAPM
+
+% expected return of portfolio and volatility (CAPM-version)
+SigmaxM_CAPM = x_cap' * Cov * x_cap;
+
+beta_capm = Cov * x_cap/SigmaxM_CAPM;
+mu_CAPM = r*one_vector + beta_capm * (MuxM_CAPM - r);  
+xM_CAPM = (inv(Cov) * (mu_CAPM - one_vector*r)) / (one_vector' * inv(Cov) *(mu_CAPM - one_vector*r));
 
 function f = portfolio_objective_function(x, mu, gamma, Cov)
     f = -mu(:)'*x(:) + (gamma/2)*(x(:)'*Cov*x(:));
@@ -195,3 +248,4 @@ function f = portfolio_objective_function2(r, z, mu, gamma, Cov)
     y = z(end);
     f = -mu(:)'*x(:) + (gamma/2)*(x(:)'*Cov*x(:)) - y*r;
 end
+
