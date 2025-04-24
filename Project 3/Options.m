@@ -62,8 +62,15 @@ index_prices = readmatrix('portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Refinitiv
 
 log_returns = diff(log(index_prices));
 VaR_95 = zeros(length(t),1);
+ratio_puts_to_calls = zeros(length(t),1);
+num_calls = zeros(length(t),1);
+num_puts = zeros(length(t),1);
+value_options = zeros(length(t),1);
+hedge_delta = zeros(length(t),1);
 
 portfolio_history = struct();
+nCall_fixed = 0;
+nPut_fixed = 0;
 
 for day = 1:length(t)
 
@@ -98,8 +105,7 @@ for day = 1:length(t)
 
     % Start with equal quantities (will be scaled)
     
-    nCall = 100;
-    nPut = round(-nCall * current_call_delta / current_put_delta);
+    ratio_puts_to_calls(day) = -current_call_delta / current_put_delta;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %Calculate VaR
@@ -108,32 +114,62 @@ for day = 1:length(t)
     % Current portfolio value
     current_call_price = BlackScholes(current_price, strike, rate, div_yield, time_to_maturity, IV(day), true);
     current_put_price = BlackScholes(current_price, strike, rate, div_yield, time_to_maturity, IV(day), false);
-    current_port_value = -nCall * current_call_price - nPut * current_put_price; %By selling options we profit wehn (Realized volatility < Implied Volatility)
-    
-    % Scenario P&L
+
+    if day == 1
+        % Determine optimal nCall and nPut on day 1 only
+        max_nCall = 0;
+        best_VaR = 0;
+
+        for test_nCall = 0:1:100000
+            test_nPut = round(test_nCall * ratio_puts_to_calls(day));
+
+            current_port_value = test_nCall * current_call_price + test_nPut * current_put_price;
+            scenario_port_values = -test_nCall * call_values - test_nPut * put_values;
+            pnl = scenario_port_values - current_port_value;
+
+            sorted_losses = sort(pnl);
+            test_VaR = -sorted_losses(round((1 - confidence_level) * noOfSimulations));
+
+            if test_VaR <= risk_limit && test_nCall > max_nCall
+                max_nCall = test_nCall;
+                best_nPut = test_nPut;
+                best_VaR = test_VaR;
+            end
+        end
+
+        nCall_fixed = max_nCall;
+        nPut_fixed = best_nPut;
+
+        nCall = max_nCall;
+        nPut = best_nPut;
+    else
+        % Use the same options position from day 1
+        nCall = nCall_fixed;
+        nPut = nPut_fixed;
+    end
+
+    % Always compute VaR
+    current_port_value = nCall * current_call_price + nPut * current_put_price;
     scenario_port_values = -nCall * call_values - nPut * put_values;
     pnl = scenario_port_values - current_port_value;
-
     sorted_losses = sort(pnl);
-    alpha = 1 - confidence_level;
-    VaR_95(day) = -prctile(sorted_losses , alpha * 100);
-    
- 
-     if VaR_95 > risk_limit
-        scale_factor = risk_limit / VaR_95;
-        nCall = floor(nCall * scale_factor);
-        nPut = floor(nPut * scale_factor);
-        fprintf('Positions scaled to %d calls and %d puts\n', nCall, nPut);
-     end
-
+    VaR_95(day) = -sorted_losses(round((1 - confidence_level) * noOfSimulations));
 
     portfolio_history(day).date = t_dates(day);
-    portfolio_history(day).nCall = nCall;
-    portfolio_history(day).nPut = nPut;
+    num_calls(day) = nCall;
+    num_puts(day) = nPut;
     portfolio_history(day).VaR = VaR_95(day);
-    portfolio_history(day).delta = nCall * current_call_delta + nPut * current_put_delta; 
-
+    hedge_delta(day) = nCall * current_call_delta + nPut * current_put_delta;
+    value_options(day) = nPut * current_put_price + nCall * current_call_price;
+    
 end
+
+   % 
+   % writematrix(VaR_95,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'R8:R13')
+   % writematrix(num_calls,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'F8:F13')
+   % writematrix(num_puts,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'G8:G13')
+   % writematrix(value_options,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'E8:E13')
+   % writematrix(hedge_delta,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'Q8:Q13')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Functions
