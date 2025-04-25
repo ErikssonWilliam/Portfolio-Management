@@ -39,11 +39,11 @@ for i = 1:length(t)
     delta_put(i) = delta;
 end
 
-    %writematrix(IV,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'L8:L13')
-    %writematrix(delta_call,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'M8:M13')
-    %writematrix(delta_put,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'N8:N13')
-    %writematrix(gamma,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'O8:O13')
-    %writematrix(vega,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'P8:P13')
+    writematrix(IV,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'L8:L13')
+    writematrix(delta_call,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'M8:M13')
+    writematrix(delta_put,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'N8:N13')
+    writematrix(gamma,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'O8:O13')
+    writematrix(vega,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'P8:P13')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Task 5 in step by step
@@ -164,12 +164,12 @@ for day = 1:length(t)
     
 end
 
-   % 
-   % writematrix(VaR_95,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'R8:R13')
-   % writematrix(num_calls,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'F8:F13')
-   % writematrix(num_puts,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'G8:G13')
-   % writematrix(value_options,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'E8:E13')
-   % writematrix(hedge_delta,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'Q8:Q13')
+
+   writematrix(VaR_95,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'R8:R13')
+   writematrix(num_calls,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'F8:F13')
+   writematrix(num_puts,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'G8:G13')
+   writematrix(value_options,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'E8:E13')
+   writematrix(hedge_delta,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Refinitiv', 'Range', 'T14:T19')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Functions
@@ -199,13 +199,13 @@ end
 
 function BS = BlackScholes(S0, K, r, q, T, current_sigma, isCall)
     
-d1 = (log(S0/K) + (r -q + (current_sigma^2)/2)*T) / (current_sigma*sqrt(T));
+d1 = (log(S0/K) + (r - q + (current_sigma^2)/2)*T) / (current_sigma*sqrt(T));
 d2 = d1 - current_sigma*sqrt(T);
 
 if isCall
     BS = S0*exp(-q*T)*normcdf(d1) - K*exp(-r*T)*normcdf(d2);
 else
-    BS = K*exp(-r*T)*normcdf(d2) - S0*exp(-q*T)*normcdf(d1);
+    BS = K*exp(-r*T)*normcdf(-d2) - S0*exp(-q*T)*normcdf(-d1);
 end
 
 end
