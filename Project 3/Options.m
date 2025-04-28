@@ -38,7 +38,7 @@ for i = 1:length(t)
     [delta, vega_, gamma_] = CalculateGreeks(S(i), K(i), r(i), q(i), T(i), IV(i), false);
     delta_put(i) = delta;
 end
-
+    % 
     writematrix(IV,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'L8:L13')
     writematrix(delta_call,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'M8:M13')
     writematrix(delta_put,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'N8:N13')
@@ -120,10 +120,10 @@ for day = 1:length(t)
         max_nCall = 0;
         best_VaR = 0;
 
-        for test_nCall = 0:1:100000
+        for test_nCall = 0:1:500000
             test_nPut = round(test_nCall * ratio_puts_to_calls(day));
 
-            current_port_value = test_nCall * current_call_price + test_nPut * current_put_price;
+            current_port_value = -test_nCall * current_call_price - test_nPut * current_put_price;
             scenario_port_values = -test_nCall * call_values - test_nPut * put_values;
             pnl = scenario_port_values - current_port_value;
 
@@ -149,8 +149,8 @@ for day = 1:length(t)
     end
 
     % Always compute VaR
-    current_port_value = nCall * current_call_price + nPut * current_put_price;
-    scenario_port_values = -nCall * call_values - nPut * put_values;
+    current_port_value = -nCall * current_call_price - nPut * current_put_price; %Income from selling options
+    scenario_port_values = -nCall * call_values - nPut * put_values; %Liable for value of options at expiration
     pnl = scenario_port_values - current_port_value;
     sorted_losses = sort(pnl);
     VaR_95(day) = -sorted_losses(round((1 - confidence_level) * noOfSimulations));
@@ -163,8 +163,8 @@ for day = 1:length(t)
     value_options(day) = nPut * current_put_price + nCall * current_call_price;
     
 end
-
-
+   % 
+   % 
    writematrix(VaR_95,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'R8:R13')
    writematrix(num_calls,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'F8:F13')
    writematrix(num_puts,'portfolioManagerV4Projekt3.xlsm', 'Sheet', 'Answer', 'Range', 'G8:G13')
