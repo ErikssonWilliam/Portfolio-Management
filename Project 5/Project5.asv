@@ -4,9 +4,9 @@ short_bond_cf = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Calculati
 short_bond_date = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Calculations', 'Range', 'E9:E10');
 long_bond_date = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Calculations', 'Range', 'J9:J18');
 long_bond_cf = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Calculations', 'Range', 'K9:K18');
-portfolio_dates = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Answer', 'Range', 'A2:A6');
-zero_coupon_rates = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Rates', 'Range', 'C7:L11');
-forward_rates = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Rates', 'Range', 'O7:X11');
+portfolio_dates = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Answer', 'Range', 'A2:A5');
+zero_coupon_rates = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Rates', 'Range', 'C7:L10');
+forward_rates = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Rates', 'Range', 'O7:X10');
 
 cov_zero_coupon = readmatrix('portfolioManagerV4Projekt5.xls', 'Sheet', 'Covariance Matrix', 'Range', 'N3:W12');
 [eigenvectors_zero_coupon, eigenvalues_zero_coupon] = eigs(cov_zero_coupon, 3);
@@ -23,19 +23,17 @@ eigenvalues_forward=diag(eigenvalues_forward);
 [eigenvectors, eigenvalues] = eigs(cov,3);
 eigenvalues=diag(eigenvalues);
 
-portfolio_time = length(portfolio_dates);
-
-time_to_maturity_short = zeros(portfolio_time, length(short_bond_date));
-time_to_maturity_long = zeros(portfolio_time, length(long_bond_date));
+time_to_maturity_short = zeros(length(portfolio_dates), length(short_bond_date));
+time_to_maturity_long = zeros(length(portfolio_dates), length(long_bond_date));
 
 interpolated_eigenvectors_short = zeros(length(short_bond_date),length(eigenvalues));
 interpolated_eigenvectors_long = zeros(length(long_bond_date),length(eigenvalues));
 
-interpolated_zero_coupon_short = zeros(portfolio_time, length(short_bond_date));
-interpolated_zero_coupon_long = zeros(portfolio_time, length(long_bond_date));
+interpolated_zero_coupon_short = zeros(length(portfolio_dates) + 1, length(short_bond_date));
+interpolated_zero_coupon_long = zeros(length(portfolio_dates) + 1, length(long_bond_date));
 
 %Calculate time to each cash flow
-for i = 1:portfolio_time
+for i = 1:length(portfolio_dates)
     for j = 1:length(long_bond_date)
 
     time_to_maturity_long(i, j) = yearfrac(portfolio_dates(i), long_bond_date(j));
@@ -77,11 +75,11 @@ for i = 1:portfolio_time
     end
 end
 
-exposure_cf_long = zeros(length(portfolio_dates)-1,length(eigenvalues)); % Portfolio exposure to each PC
-exposure_cf_short = zeros(length(portfolio_dates)-1,length(eigenvalues));
-total_exposure = zeros(length(portfolio_dates)-1,length(eigenvalues));
+exposure_cf_long = zeros(length(portfolio_dates),length(eigenvalues)); % Portfolio exposure to each PC
+exposure_cf_short = zeros(length(portfolio_dates),length(eigenvalues));
+total_exposure = zeros(length(portfolio_dates),length(eigenvalues));
 
-for i = 1:length(portfolio_dates)-1
+for i = 1:length(portfolio_dates)
     for j = 1:length(long_bond_date)
        %Equation 1: Derivative of discount factors 
         r_t = interpolated_zero_coupon_long(i+1, :);
@@ -95,7 +93,7 @@ for i = 1:length(portfolio_dates)-1
         gradient_disc_factor_long = -diag(T_long) * diag(d_t_long) * interpolated_eigenvectors_long;
 
         %Equation 3: Exposure of each cash flow 
-        exposure_cf_long(i,:) = gradient_disc_factor_long' * long_bond_cf; % Element-wise multiplication
+        exposure_cf_long(i+1,:) = gradient_disc_factor_long' * long_bond_cf; % Element-wise multiplication
 
         if j <= length(short_bond_date)
         %Equation 1: Derivative of discount factors 
@@ -110,16 +108,14 @@ for i = 1:length(portfolio_dates)-1
         gradient_disc_factor_short = -diag(T_short) * diag(d_t_short) * interpolated_eigenvectors_short;
 
         % Equation 3: Exposure of each cash flow 
-        exposure_cf_short(i,:) = gradient_disc_factor_short' * short_bond_cf; % Element-wise multiplication
+        exposure_cf_short(i+1,:) = gradient_disc_factor_short' * short_bond_cf; % Element-wise multiplication
 
         end
         % Equation 4: Portfolio exposure
-        total_exposure = exposure_cf_short + exposure_cf_long;
+        total_exposure(i+1) = exposure_cf_short(i) + exposure_cf_long(i);
     end
    
 end
-
-    %writematrix(total_exposure,'portfolioManagerV4Projekt5.xls', 'Sheet', 'Answer', 'Range', 'C2:E5')
 
 %Here we shall interpolate the eigenvectors%
 
